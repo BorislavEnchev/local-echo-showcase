@@ -1,0 +1,32 @@
+flowchart TD
+    A["Full Transcript<br/>(e.g. 100K chars)"] --> B{"Length &lt;= chunk limit?"}
+    B -->|"Yes (&lt; 25K chars)"| C["Single-Pass Summary"]
+    B -->|"No (&gt; 25K chars)"| D["Split at line boundaries"]
+    
+    D --> E["Chunk 1<br/>(25K chars)"]
+    D --> F["Chunk 2<br/>(25K chars)"]
+    D --> G["Chunk 3<br/>(25K chars)"]
+    D --> H["Chunk N<br/>(25K chars)"]
+    
+    E --> I["Summarize Chunk 1<br/>with LLM"]
+    F --> J["Summarize Chunk 2<br/>with LLM"]
+    G --> K["Summarize Chunk 3<br/>with LLM"]
+    H --> L["Summarize Chunk N<br/>with LLM"]
+    
+    I --> M["Chunk Summary 1"]
+    J --> M
+    K --> M
+    L --> M
+    
+    M --> N{"Multiple summaries?"}
+    
+    C --> Z["Final Summary"]
+    N -->|"Yes"| O["Consolidate: Merge summaries,<br/>remove redundancy,<br/>maintain chronology"]
+    N -->|"No (single chunk)"| Z
+    O --> Z
+
+    style A fill:#fff3e0,stroke:#e65100,color:#000
+    style B fill:#fff,stroke:#333,color:#000
+    style C fill:#e8f5e9,stroke:#2E7D32,color:#000
+    style Z fill:#e8f5e9,stroke:#2E7D32,color:#000
+    style O fill:#e3f2fd,stroke:#1565C0,color:#000

@@ -1,0 +1,73 @@
+flowchart TB
+    subgraph PRESENTATION["PRESENTATION LAYER"]
+        direction TB
+        subgraph Views["Views (XAML)"]
+            MP["MainPage"]
+            LP["LibraryPage"]
+            EP["EntryDetailPage"]
+            SP["SettingsPage"]
+            CP["LibraryChatPage"]
+        end
+        subgraph ViewModels["ViewModels"]
+            MV["MainViewModel"]
+            LV["LibraryViewModel"]
+            OV["OnboardingViewModel<br/>(shared state)"]
+        end
+        MP --> MV
+        LP --> LV
+        EP -->|Code-behind| LSvc
+        CP --> LSvc
+    end
+
+    subgraph SERVICE["SERVICE LAYER"]
+        direction TB
+        AS["AudioService"]
+        TS["TranscriptionService"]
+        SS["SummarizationService"]
+        PS["ProService"]
+        LSvc["LibraryService"]
+        AP["AppPreferences"]
+        
+        IAudio["«IAudioService»"]
+        ITrans["«ITranscriptionService»"]
+        ISumm["«ISummarizationService»"]
+        IPro["«IProService»"]
+        
+        IAudio -.-> AS
+        ITrans -.-> TS
+        ISumm -.-> SS
+        IPro -.-> PS
+    end
+
+    subgraph DATA["DATA / INFRASTRUCTURE LAYER"]
+        direction TB
+        DB["SQLite Database<br/>(Transcriptions)"]
+        WhisperM["Whisper Model<br/>(.bin GGML)"]
+        LLMM["LLM Model File<br/>(.gguf)"]
+        AudioF["Audio Files<br/>(.wav)"]
+        TempWAV["Temp WAV Cache<br/>(resampled)"]
+        Prefs["Preferences<br/>(MAUI Settings)"]
+    end
+
+    MV --> IAudio
+    MV --> ITrans
+    MV --> ISumm
+    MV --> IPro
+    MV --> LSvc
+    
+    LV --> LSvc
+    LV --> IPro
+    LV --> ITrans
+    LV --> ISumm
+
+    AS --> AudioF
+    TS --> WhisperM
+    TS --> TempWAV
+    SS --> LLMM
+    LSvc --> DB
+    MV --> AP
+    SP --> AP
+
+    style PRESENTATION fill:#e1d5f7,stroke:#512BD4,color:#000
+    style SERVICE fill:#d5f0e1,stroke:#2B7D4B,color:#000
+    style DATA fill:#f0e6d5,stroke:#8B6B3D,color:#000

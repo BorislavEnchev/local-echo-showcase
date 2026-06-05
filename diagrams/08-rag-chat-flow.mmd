@@ -1,0 +1,36 @@
+sequenceDiagram
+    actor User
+    participant UI as LibraryChatPage
+    participant LS as LibraryService
+    participant LLM as SummarizationService
+
+    User->>UI: "What was said about AI?"
+    UI->>LS: GetRelevantContentForChatAsync(query)
+
+    alt "latest" / "recent" query
+        LS->>LS: Return 3 most recent entries
+    else Standard query
+        LS->>LS: Search entries by keyword
+        LS->>LS: Limit to 5 results
+        alt No results
+            LS->>LS: Fallback to 3 most recent
+        end
+    end
+
+    LS-->>UI: Formatted context block (Record entries)
+    UI->>LLM: ChatWithContextAsync(context, question)
+
+    alt Model needs loading
+        LLM->>LLM: LoadModelAsync()
+    end
+
+    LLM->>LLM: Truncate context to model window
+    Note over LLM: Phi-3: 6K chars<br/>Qwen/Llama: 32K chars
+    LLM->>LLM: Generate response (max 500 tokens)
+    LLM-->>UI: Answer with [Title](rec:id) references
+
+    UI->>UI: Parse [Title](rec:id) links<br/>→ Clickable spans
+    UI-->>User: Display formatted answer
+
+    User->>UI: Click [Recording Title]
+    UI->>UI: Navigate to EntryDetailPage

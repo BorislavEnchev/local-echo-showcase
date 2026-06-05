@@ -1,0 +1,54 @@
+sequenceDiagram
+    participant User
+    participant UI as MainPage (XAML)
+    participant VM as MainViewModel
+    participant Audio as AudioService
+    participant Whisper as TranscriptionService
+    participant LLM as SummarizationService
+    participant DB as LibraryService
+
+    User->>UI: Click "Record Mic"
+    UI->>VM: RecordMicCommand
+    VM->>Audio: StartRecordingAsync()
+    Audio-->>VM: AudioStartResult
+    VM-->>UI: Update UI (timer, status badge)
+
+    User->>UI: Click "Stop"
+    UI->>VM: StopRecordingCommand
+    VM->>Audio: StopRecordingAsync()
+    Audio-->>VM: AudioStopResult (filePath)
+
+    VM->>Whisper: TranscribeAsync(filePath)
+    Whisper->>Whisper: Resample to 16kHz mono WAV
+    Whisper->>Whisper: Run Whisper inference
+    loop Every transcribed segment
+        Whisper-->>VM: Text segment [HH:mm:ss] content
+    end
+    VM->>DB: SaveEntryAsync(entry)
+
+    User->>UI: Click "Generate Summary"
+    UI->>VM: SummarizeCommand
+
+    alt Model needs loading
+        VM->>LLM: LoadModelAsync()
+        LLM-->>VM: Success/failure
+    end
+
+    VM->>LLM: SummarizeAsync(transcript, type)
+    LLM->>LLM: Clean repetitions
+
+    alt Long transcript
+        LLM->>LLM: Split into chunks
+        loop Each chunk
+            LLM->>LLM: Summarize chunk
+        end
+        LLM->>LLM: Consolidate summaries
+    else Short transcript
+        LLM->>LLM: Single pass summarization
+    end
+
+    LLM-->>VM: Summary text
+    VM->>LLM: GenerateTitleAsync(transcript)
+    LLM-->>VM: AI-generated title
+    VM->>DB: SaveEntryAsync(updated entry)
+    VM-->>UI: Update UI (summary, title, open button)

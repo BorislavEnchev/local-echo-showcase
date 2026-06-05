@@ -1,0 +1,46 @@
+flowchart TD
+    I[("fa:fa-microchip IAudioService")]
+    I -->|Windows| W["AudioService.cs"]
+    I -->|macOS| M["AudioService.cs"]
+    I -->|Android| A["AudioService.cs"]
+
+    subgraph WindowsImpl ["Windows Implementation"]
+        direction TB
+        W1["WaveInEvent /<br/>WasapiLoopbackCapture"]
+        W2["WaveFileWriter"]
+        W3["NAudio<br/>(NuGet)"]
+    end
+
+    subgraph macOSImpl ["macOS Implementation"]
+        direction TB
+        M1["AVAudioRecorder"]
+        M2["AVAudioRecorderSettings<br/>LinearPCM 16kHz Mono"]
+        M3["AVFoundation<br/>(Native SDK)"]
+    end
+
+    subgraph AndroidImpl ["Android Implementation"]
+        direction TB
+        A1["AudioRecord"]
+        A2["MediaProjection API<br/>(Android 10+)"]
+        A3["Manual WAV Header<br/>Builder (44 bytes)"]
+        A4["Microphone Fallback"]
+    end
+
+    W --> W1
+    W --> W2
+    W1 -.-> W3
+    W2 -.-> W3
+
+    M --> M1
+    M1 --> M2
+    M2 -.-> M3
+
+    A --> A1
+    A --> A2
+    A2 -.->|Permission denied| A4
+    A1 --> A3
+
+    style I fill:#512BD4,color:#fff,stroke:#333
+    style WindowsImpl fill:#e3f2fd,stroke:#1565C0,color:#000
+    style macOSImpl fill:#e8f5e9,stroke:#2E7D32,color:#000
+    style AndroidImpl fill:#fce4ec,stroke:#C62828,color:#000
