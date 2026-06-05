@@ -1,12 +1,21 @@
-# 02. ViewModel Pattern
+// 02. ViewModel Pattern
+//
+// MVVM with CommunityToolkit.Mvvm source generators for clean, maintainable presentation logic.
+//
+// Key patterns:
+// 1. Source-Generated Properties: [ObservableProperty] generates INotifyPropertyChanged
+// 2. Source-Generated Commands: [RelayCommand] converts async methods into ICommand properties
+// 3. Constructor Injection: All dependencies injected via constructor
+// 4. UI Updates on Main Thread: Callbacks marshaled to UI thread
+// 5. Lifecycle Management: ViewModels created via DI and tied to page lifecycle
 
-MVVM with CommunityToolkit.Mvvm source generators for clean, maintainable presentation logic.
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
----
+// ──────────────────────────────────────────────
+// MainViewModel — Core Recording & Transcription Flow
+// ──────────────────────────────────────────────
 
-## MainViewModel — Core Recording & Transcription Flow
-
-```csharp
 public partial class MainViewModel : ObservableObject
 {
     private readonly IAudioService _audioService;
@@ -73,7 +82,7 @@ public partial class MainViewModel : ObservableObject
 
         var builder = new StringBuilder();
         await foreach (var segment in _transcriptionService
-            .TranscribeAsync(_currentAudioPath, 
+            .TranscribeAsync(_currentAudioPath,
                 progress => TranscriptionProgress = progress))
         {
             builder.AppendLine(segment);
@@ -81,7 +90,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         // Save to library
-        var entry = new TranscriptionEntry { ... };
+        var entry = new TranscriptionEntry { /* ... */ };
         await _libraryService.SaveEntryAsync(entry);
     }
 
@@ -121,100 +130,64 @@ public partial class MainViewModel : ObservableObject
         IsRecording = true;
         _recordingTimer?.Start();
     }
-}
-```
 
-## Key MVVM Patterns
+    // ── Constructor Injection ──
 
-### 1. Source-Generated Properties
-The `[ObservableProperty]` attribute generates:
-- `INotifyPropertyChanged` implementation
-- `partial` property with getter/setter
-- Automatic change notification
-
-```csharp
-// What you write:
-[ObservableProperty]
-public partial bool IsRecording { get; set; }
-
-// What's generated:
-private bool _isRecording;
-public bool IsRecording
-{
-    get => _isRecording;
-    set
+    public MainViewModel(
+        IAudioService audioService,
+        ITranscriptionService transcriptionService,
+        ISummarizationService summarizationService,
+        LibraryService libraryService,
+        OnboardingViewModel onboardingViewModel)
     {
-        if (_isRecording != value)
-        {
-            _isRecording = value;
-            OnPropertyChanged();
-        }
+        _audioService = audioService;
+        _transcriptionService = transcriptionService;
+        _summarizationService = summarizationService;
+        _libraryService = libraryService;
+        Onboarding = onboardingViewModel;
     }
 }
-```
 
-### 2. Source-Generated Commands
-The `[RelayCommand]` attribute converts async methods into `ICommand` properties:
+// ──────────────────────────────────────────────
+// Generated Code Examples (for reference)
+// ──────────────────────────────────────────────
 
-```csharp
-// What you write:
-[RelayCommand]
-private async Task RecordMic() { ... }
+// [ObservableProperty] generates:
+// private bool _isRecording;
+// public bool IsRecording
+// {
+//     get => _isRecording;
+//     set
+//     {
+//         if (_isRecording != value)
+//         {
+//             _isRecording = value;
+//             OnPropertyChanged();
+//         }
+//     }
+// }
 
-// What's generated (accessible in XAML):
+// [RelayCommand] on RecordMic() generates:
 // public ICommand RecordMicCommand { get; }
-```
 
-- Handles `CanExecute` for `IsEnabled` binding
-- Async void → async Task conversion for fire-and-forget safety
-- Automatic `NotifyCanExecuteChangedFor` support
+// ──────────────────────────────────────────────
+// Page Code-Behind Wiring
+// ──────────────────────────────────────────────
 
-### 3. Constructor Injection
-All dependencies are injected via the constructor — registered as Transient in DI:
-
-```csharp
-public MainViewModel(
-    IAudioService audioService,
-    ITranscriptionService transcriptionService,
-    ISummarizationService summarizationService,
-    LibraryService libraryService,
-    OnboardingViewModel onboardingViewModel)
-{
-    _audioService = audioService;
-    _transcriptionService = transcriptionService;
-    _summarizationService = summarizationService;
-    _libraryService = libraryService;
-    Onboarding = onboardingViewModel;
-}
-```
-
-### 4. UI Updates on Main Thread
-Since callbacks from services may arrive on background threads, UI updates are marshaled:
-
-```csharp
-await foreach (var segment in _transcriptionService
-    .TranscribeAsync(_currentAudioPath, progress =>
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            TranscriptionProgress = progress;
-        });
-    }))
-```
-
-**Note:** CommunityToolkit.Mvvm's `[ObservableProperty]` automatically marshals property changes to the UI thread when the property is set from a background thread, but explicit `BeginInvokeOnMainThread` is used for progress callbacks that arrive within `Action<double>` delegates.
-
-### 5. Lifecycle Management
-ViewModels are created via DI and tied to page lifecycle:
-
-```csharp
-// Page code-behind
-protected override async void OnAppearing()
-{
-    base.OnAppearing();
-    await _viewModel.InitializeAsync();
-}
-```
-
-- **Singleton**: `OnboardingViewModel` (shared state across the app)
-- **Transient**: `MainViewModel`, `LibraryViewModel` (fresh instance per navigation)
+// public partial class MainPage : ContentPage
+// {
+//     private readonly MainViewModel _viewModel;
+//
+//     public MainPage(MainViewModel viewModel)
+//     {
+//         InitializeComponent();
+//         _viewModel = viewModel;
+//         BindingContext = _viewModel;
+//     }
+//
+//     protected override async void OnAppearing()
+//     {
+//         base.OnAppearing();
+//         await _viewModel.InitializeAsync();
+//     }
+// }
